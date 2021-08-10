@@ -5,9 +5,6 @@
         <i class="icon"></i>
         <span class="text">日历</span>
       </div>
-      <button class="backToday"
-        v-on:click.prevent="backToToday"
-        v-if="!choosedDay.isToday">回到今天</button>
     </div>
     <div class="date-list" ref="hCalendarRef">
       <div
@@ -27,7 +24,7 @@
           <div>
             <p
               class="date-item-date"
-              :class="{ choosed: day.isChoosed }"
+              :class="{ choosed: day.isChoosed, today: day.isToday }"
             >{{ day.date == 1 ? day.month + '月' : day.isToday ? '今' : day.date }}</p>
             <p class="date-item-day">{{ day.day }}</p>
             <p class="date-item-dot" v-if="day.hasSchedule"></p> 
@@ -35,6 +32,8 @@
         </div>
       </div>
     </div>
+
+    <button class="backToday" v-on:click.prevent="backToToday">回到今天</button>
   </div>
 </template>
 
@@ -43,7 +42,7 @@
 import { ref, onMounted, watch, nextTick } from 'vue';
 import { dateFmt, isToday, getDayOfWeek, getDetailOfDay, getWeekStartDate } from '../../utils/time'
 
-const maxCount = 21
+const maxCount = 7
 const count = 7 // 放置的日期方块的数量
 const changeCount = 7 // 每次滑动7天
 const oneDay = 24 * 60 * 60 * 1000
@@ -70,17 +69,6 @@ const props = defineProps({
   }
 })
 
-watch(() => props.date,
-  (newVal, oldVal) => {
-    console.log(newVal.getTime())
-    console.log(oldVal.getTime())
-    if (newVal.getTime() !== oldVal.getTime()) {
-      console.log(1)
-      init()
-    }
-  }
-)
-
 // 每一个日期对象的数据结构如下
 // {
 //   dateFormat: "2019/07/20",
@@ -106,9 +94,10 @@ const choosedDay = ref({})
 // 今天
 const today = ref({})
 
+const isHasToday = ref(false)
+
 const translateX = ref(0)
 const transitionDuration = ref('300ms')
-
 
 const init = () => {
   domWidth.value = hCalendarRef.value.offsetWidth
@@ -120,7 +109,7 @@ const init = () => {
   choosedDay.value = formatOneDay(props.date)
   emit('change', choosedDay.value)
   // 展示的一周的第一天
-  firstDay.value = formatOneDay(getWeekStartDate(getDetailOfDay(props.date)))
+  firstDay.value = getFirstDay(props.date)
   createList()
 }
 
@@ -159,12 +148,23 @@ const formatOneDay = day => {
   }
 }
 
+// 每周的第一个周日
+const getFirstDay = date => {
+  return formatOneDay(getWeekStartDate(getDetailOfDay(date)))
+}
+
+const hasToday = () => {
+  return dateList.value.some(item => item.isToday)
+}
+
 
 const backToToday = () => {
-  firstDay.value = today.value
-  choosedDay.value = today.value
-  createList()
-  console.log('backToToday')
+  if (!hasToday()) {
+    firstDay.value = getFirstDay(new Date())
+    choosedDay.value = today.value
+    emit('change', choosedDay.value)
+    createList()
+  }
 }
 
 onMounted(init)
